@@ -7,26 +7,30 @@ require 'time'
 class GitHttp
   class App 
 
-    SERVICES = [
-      ["POST", 'service_rpc',      "(.*?)/git-upload-pack$",  'upload-pack'],
-      ["POST", 'service_rpc',      "(.*?)/git-receive-pack$", 'receive-pack'],
+    unless defined?(SERVICES)
+      SERVICES = [
+        ["POST", 'service_rpc',      "(.*?)/git-upload-pack$",  'upload-pack'],
+        ["POST", 'service_rpc',      "(.*?)/git-receive-pack$", 'receive-pack'],
 
-      ["GET",  'get_info_refs',    "(.*?)/info/refs$"],
-      ["GET",  'get_text_file',    "(.*?)/HEAD$"],
-      ["GET",  'get_text_file',    "(.*?)/objects/info/alternates$"],
-      ["GET",  'get_text_file',    "(.*?)/objects/info/http-alternates$"],
-      ["GET",  'get_info_packs',   "(.*?)/objects/info/packs$"],
-      ["GET",  'get_text_file',    "(.*?)/objects/info/[^/]*$"],
-      ["GET",  'get_loose_object', "(.*?)/objects/[0-9a-f]{2}/[0-9a-f]{38}$"],
-      ["GET",  'get_pack_file',    "(.*?)/objects/pack/pack-[0-9a-f]{40}\\.pack$"],
-      ["GET",  'get_idx_file',     "(.*?)/objects/pack/pack-[0-9a-f]{40}\\.idx$"],      
-    ]
+        ["GET",  'get_info_refs',    "(.*?)/info/refs$"],
+        ["GET",  'get_text_file',    "(.*?)/HEAD$"],
+        ["GET",  'get_text_file',    "(.*?)/objects/info/alternates$"],
+        ["GET",  'get_text_file',    "(.*?)/objects/info/http-alternates$"],
+        ["GET",  'get_info_packs',   "(.*?)/objects/info/packs$"],
+        ["GET",  'get_text_file',    "(.*?)/objects/info/[^/]*$"],
+        ["GET",  'get_loose_object', "(.*?)/objects/[0-9a-f]{2}/[0-9a-f]{38}$"],
+        ["GET",  'get_pack_file',    "(.*?)/objects/pack/pack-[0-9a-f]{40}\\.pack$"],
+        ["GET",  'get_idx_file',     "(.*?)/objects/pack/pack-[0-9a-f]{40}\\.idx$"],
+      ]
+      SERVICES.map! { |service| service[2] = Regexp.new(service[2]); service }
+      SERVICES.freeze
+    end
 
     def self.match_routing(req)
       cmd = nil
       path = nil
-      SERVICES.each do |method, handler, match, rpc|
-        if m = Regexp.new(match).match(req.path_info)
+      SERVICES.each do |method, handler, matcher, rpc|
+        if m = matcher.match(req.path_info)
           return ['not_allowed'] if method != req.request_method
           cmd = handler
           path = m[1]
