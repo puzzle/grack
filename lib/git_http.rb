@@ -5,7 +5,22 @@ require 'rack/utils'
 require 'time'
 
 class GitHttp
-  class App 
+  class Response < Rack::Response
+    def respond_to?(meth)
+      meth = meth.to_sym
+      if meth == :to_path
+        body.respond_to? :to_path
+      else
+        super(meth)
+      end
+    end
+
+    def to_path
+      body.to_path if body.respond_to?(:to_path)
+    end
+  end
+
+  class App
 
     unless defined?(SERVICES)
       SERVICES = [
@@ -103,7 +118,7 @@ class GitHttp
       return render_no_access if !has_access(@rpc, true)
       input = read_body
 
-      @res = Rack::Response.new
+      @res = Response.new
       @res.status = 200
       @res["Content-Type"] = "application/x-git-%s-result" % @rpc
       @res.finish do
@@ -125,7 +140,7 @@ class GitHttp
         cmd = git_command("#{service_name} --stateless-rpc --advertise-refs .")
         refs = `#{cmd}`
 
-        @res = Rack::Response.new
+        @res = Response.new
         @res.status = 200
         @res["Content-Type"] = "application/x-git-%s-advertisement" % service_name
         hdr_nocache
@@ -187,7 +202,7 @@ class GitHttp
       reqfile = File.join(@dir, reqfile)
       return render_not_found if !F.exists?(reqfile)
 
-      @res = Rack::Response.new
+      @res = Response.new
       @res.status = 200
       @res["Content-Type"]  = content_type
       @res["Last-Modified"] = F.mtime(reqfile).httpdate
@@ -196,20 +211,23 @@ class GitHttp
 
       if size = F.size?(reqfile)
         @res["Content-Length"] = size.to_s
-        @res.finish do
-          F.open(reqfile, "rb") do |file|
-            while part = file.read(8192)
-              @res.write part
-            end
+        @res.body = F.open(reqfile, "rb")
+      else
+        body = []
+        size = 0
+        F.open(reqfile, "rb") do |file|
+          chuck = file.read(512)
+          while chuck
+            body << chuck
+            size += Rack::Utils.bytesize(chuck)
+            chuck = file.read(512)
           end
         end
-      else
-        body = [F.read(reqfile)]
-        size = Rack::Utils.bytesize(body.first)
-        @res["Content-Length"] = size
-        @res.write body
-        @res.finish
+        @res.body = body
+        @res["Content-Length"] = size.to_s
       end
+
+      @res.finish
     end
 
     def get_git_dir(path)
