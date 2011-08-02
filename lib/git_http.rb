@@ -231,7 +231,7 @@ class GitHttp
     end
 
     def get_git_dir(path)
-      root = @config[:project_root] || `pwd`
+      root = @config[:project_root] || Dir.pwd
       path = F.expand_path(File.join(root, path))
       if File.exists?(path) && (GitHttp::App.git_dir?(path)||GitHttp::App.git_dir?(File.join(path,'.git')))
         return path
@@ -325,7 +325,7 @@ class GitHttp
     end
 
     def render_list_or_repos
-      root = F.expand_path(@config[:project_root] || `pwd`)
+      root = F.expand_path(@config[:project_root] || Dir.pwd)
       repos = Dir[F.join(root,"/**/.git")].map { |repo|
         repo_path = repo[root.size+1...-4].gsub(/\/$/,'')
         repo_url = "#{@env['rack.url_scheme']}://#{@env['HTTP_HOST']}/#{repo_path}"

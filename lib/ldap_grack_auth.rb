@@ -121,7 +121,7 @@ class LdapGrackAuth < Rack::Auth::Basic
 
   def git_path
     return @git_path unless @git_path.nil?
-    root = @app.config[:project_root] || `pwd`
+    root = @app.config[:project_root] || Dir.pwd
     @git_path = File.expand_path(File.join(root, git_rel_path))
   end
 
