@@ -447,7 +447,7 @@ class LdapGrackAuthTest < Test::Unit::TestCase
     assert_equal 404, last_response.status
   end
 
-  def test_should_404_with_ro_on_a_users_url_where_not_mysqld_and_git_dir_does_not_exist
+  def test_should_404_with_ro_on_a_users_url_where_not_myself_and_git_dir_does_not_exist
     MockLdap.any_instance.expects(:bind_as).with(
       :base => app.config[:ldap_base],
       :filter => 'uid=nice',
