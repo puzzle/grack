@@ -233,13 +233,8 @@ class GitHttp
       path = File.expand_path(File.join(root, path))
       if File.exists?(path) && (GitHttp::App.git_dir?(path)||GitHttp::App.git_dir?(File.join(path,'.git')))
         return path
-      elsif allow_creation && GitHttp::App.no_git_subdir?(path)
-        require 'fileutils'
-        begin
-          FileUtils.mkdir_p(path)
-          system(git_command("init --bare #{path}"))
-          return path if $?.exitstatus == 0
-        rescue; end
+      elsif @req['service'] == 'git-receive-pack' && allow_creation && GitHttp::App.no_git_subdir?(path)
+        return init_git_dir(path)
       end
       false
     end
@@ -363,6 +358,15 @@ class GitHttp
       @res["Date"] = now.to_s
       @res["Expires"] = (now + 31536000).to_s;
       @res["Cache-Control"] = "public, max-age=31536000";
+    end
+
+    def init_git_dir(path)
+      require 'fileutils'
+      FileUtils.mkdir_p(path)
+      system("#{git_command("init --bare #{path}")} > /dev/null")
+      $?.exitstatus == 0 ? path : false
+    rescue
+      false
     end
 
   end

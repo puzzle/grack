@@ -186,7 +186,7 @@ class GitHttpTest < Test::Unit::TestCase
     assert GitHttp::App.git_dir?(File.join(example,'example','.git'))
   end
 
-  def test_return_404_on_non_existing_git_dir
+  def test_return_404_on_non_existing_git_dir_if_fetching
     app1 = GitHttp::App.new({:project_root => example})
     session = Rack::Test::Session.new(app1)
 
@@ -194,7 +194,7 @@ class GitHttpTest < Test::Unit::TestCase
     assert_equal 404, session.last_response.status
   end
 
-  def test_create_directory_if_creation_is_allowed
+  def test_create_directory_if_creation_is_allowed_on_push
     IO.stubs(:popen).returns(MockProcess.new)
     app1 = GitHttp::App.new({:project_root => example})
     app1.stubs(:get_git_config).with('http.uploadpack').returns('true')
@@ -205,14 +205,30 @@ class GitHttpTest < Test::Unit::TestCase
     tmp_path = File.join(example,'example-notyetexistant')
     GitHttp::App.expects(:no_git_subdir?).with(tmp_path).returns(true)
 
-    session.post "/example-notyetexistant/git-receive-pack", {}, {"CONTENT_TYPE" => "application/x-git-receive-pack-request" }
+    session.get "/example-notyetexistant/info/refs?service=git-receive-pack"
     FileUtils.remove_entry_secure(tmp_path,true)
     assert_equal 200, session.last_response.status
 
     # in a subsequent request allow_creation is unset
-    session.post "/example-notyetexistant/git-receive-pack", {}, {"CONTENT_TYPE" => "application/x-git-receive-pack-request" }
+    session.get "/example-notyetexistant/info/refs?service=git-receive-pack"
     assert_equal 404, session.last_response.status
   end
+
+  def test_do_not_create_directory_if_creation_is_allowed_but_we_fetch
+    IO.stubs(:popen).returns(MockProcess.new)
+    app1 = GitHttp::App.new({:project_root => example})
+    app1.stubs(:get_git_config).with('http.uploadpack').returns('true')
+    app1.stubs(:get_git_config).with('http.receivepack').returns('true')
+    app1.allow_creation!
+    session = Rack::Test::Session.new(app1)
+    require 'fileutils'
+    tmp_path = File.join(example,'example-notyetexistant')
+    GitHttp::App.any_instance.expects(:init_git_dir).with(tmp_path).never
+
+    session.get "/example-notyetexistant/info/refs?service=git-upload-pack"
+    assert_equal 404, session.last_response.status
+  end
+
 
   def test_figure_out_git_subdir
     require 'fileutils'
