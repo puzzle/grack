@@ -195,27 +195,25 @@ class GitHttp
     # logic helping functions
     # ------------------------
 
-    F = ::File
-
     # some of this borrowed from the Rack::File implementation
     def send_file(reqfile, content_type)
       reqfile = File.join(@dir, reqfile)
-      return render_not_found if !F.exists?(reqfile)
+      return render_not_found if !File.exists?(reqfile)
 
       @res = Response.new
       @res.status = 200
       @res["Content-Type"]  = content_type
-      @res["Last-Modified"] = F.mtime(reqfile).httpdate
+      @res["Last-Modified"] = File.mtime(reqfile).httpdate
 
       yield
 
-      if size = F.size?(reqfile)
+      if size = File.size?(reqfile)
         @res["Content-Length"] = size.to_s
-        @res.body = F.open(reqfile, "rb")
+        @res.body = File.open(reqfile, "rb")
       else
         body = []
         size = 0
-        F.open(reqfile, "rb") do |file|
+        File.open(reqfile, "rb") do |file|
           chuck = file.read(512)
           while chuck
             body << chuck
@@ -232,7 +230,7 @@ class GitHttp
 
     def get_git_dir(path)
       root = @config[:project_root] || Dir.pwd
-      path = F.expand_path(File.join(root, path))
+      path = File.expand_path(File.join(root, path))
       if File.exists?(path) && (GitHttp::App.git_dir?(path)||GitHttp::App.git_dir?(File.join(path,'.git')))
         return path
       elsif allow_creation && GitHttp::App.no_git_subdir?(path)
@@ -325,8 +323,8 @@ class GitHttp
     end
 
     def render_list_or_repos
-      root = F.expand_path(@config[:project_root] || Dir.pwd)
-      repos = Dir[F.join(root,"/**/.git")].map { |repo|
+      root = File.expand_path(@config[:project_root] || Dir.pwd)
+      repos = Dir[File.join(root,"/**/.git")].map { |repo|
         repo_path = repo[root.size+1...-4].gsub(/\/$/,'')
         repo_url = "#{@env['rack.url_scheme']}://#{@env['HTTP_HOST']}/#{repo_path}"
 
